@@ -1,18 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Tv, Film, BookOpen, Flame, Check, Plus, Search, 
   BarChart2, User, Trash2, ChevronRight, 
   CheckCircle2, X, Sparkles, Bookmark, LayoutGrid, List,
-  Calendar, Star, Filter, Heart, Clock, ArrowUpRight
+  ArrowUpRight, LogIn, LogOut, Loader2
 } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from './types';
-import { INITIAL_ITEMS } from './types';
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react';
+import { searchByType, SearchSuggestion, getDetailsByExternalId } from './api/search';
 
-export function App() {
+const PUBLISHABLE_KEY = "pk_test_bGlnaHRpbmctbW9ua2V5LTQ4LmNsZXJrLmFjY291bnRzLmRldiQ";
+
+function ShelfieApp() {
+  const { user } = useUser();
+  const userId = user?.id || 'guest';
+
   const [items, setItems] = useState<MediaItem[]>(() => {
-    const saved = localStorage.getItem('shelfie_items');
-    return saved ? JSON.parse(saved) : INITIAL_ITEMS;
+    const saved = localStorage.getItem(`shelfie_items_${userId}`);
+    return saved ? JSON.parse(saved) : [];
   });
+
+  // Re-sync when user changes
+  React.useEffect(() => {
+    const saved = localStorage.getItem(`shelfie_items_${userId}`);
+    setItems(saved ? JSON.parse(saved) : []);
+  }, [userId]);
+
+  React.useEffect(() => {
+    localStorage.setItem(`shelfie_items_${userId}`, JSON.stringify(items));
+  }, [items, userId]);
 
   const [activeTab, setActiveTab] = useState<'home' | 'shelf' | 'stats' | 'profile' | 'search'>('home');
   const [filterType, setFilterType] = useState<MediaType | 'all'>('all');
@@ -21,11 +37,6 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Sync state to local storage
-  React.useEffect(() => {
-    localStorage.setItem('shelfie_items', JSON.stringify(items));
-  }, [items]);
 
   const handleQuickCompleteNext = (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,10 +125,53 @@ export function App() {
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState<MediaType>('tv');
   const [newTotal, setNewTotal] = useState(12);
-  const [newCover, setNewCover] = useState('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop');
+  const [newCover, setNewCover] = useState('');
   const [newSynopsis, setNewSynopsis] = useState('');
-  const [newYear, setNewYear] = useState(2026);
-  const [newGenres, setNewGenres] = useState('Action, Sci-Fi');
+  const [newYear, setNewYear] = useState('');
+  const [newGenres, setNewGenres] = useState('');
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
+
+  // Multi-source auto-complete (TVMaze, Jikan/Anime, TMDB, Metron, OpenLibrary, Google Books, iTunes fallback)
+  useEffect(() => {
+    if (newTitle.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchByType(newType, newTitle, controller.signal);
+        setSuggestions(results);
+      } catch (err) {
+        const error = err as Error;
+        if (error.name !== 'AbortError') {
+          setSuggestions([]);
+          console.error('Search failed:', error.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsSearching(false);
+      }
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [newTitle, newType]);
+
+  const selectSuggestion = (s: SearchSuggestion) => {
+    setNewTitle(s.title);
+    setNewCover(s.coverUrl || '');
+    setNewYear(s.year?.toString() || '');
+    setNewGenres(s.genres.join(', '));
+    setNewSynopsis(s.synopsis || 'No synopsis available.');
+    setShowSuggestions(false);
+  };
 
   const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +189,7 @@ export function App() {
       status: 'watching',
       currentProgress: 0,
       totalProgress: newTotal,
-      coverImage: newCover || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop',
+      coverImage: newCover || '',
       synopsis: newSynopsis || 'No synopsis provided.',
       releaseYear: Number(newYear),
       genres: newGenres.split(',').map(g => g.trim()).filter(Boolean),
@@ -183,6 +237,8 @@ export function App() {
     }
   };
 
+  const firstWatchingItem = items.find(i => i.status === 'watching') || items[0];
+
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white flex flex-col items-center justify-start pb-16">
       
@@ -201,10 +257,10 @@ export function App() {
                   Shelfie
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
-                  BINGERS STYLE
+                  MULTI-USER PRO
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Track comics, movies, tv & anime per episode/issue with pleasant dark mode</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Personal accounts & private media vaults</p>
             </div>
           </div>
 
@@ -222,7 +278,7 @@ export function App() {
               className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'shelf' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
             >
               <Bookmark className="w-4 h-4" />
-              <span>Full Shelf</span>
+              <span>Full Shelf ({items.length})</span>
             </button>
             <button 
               onClick={() => setActiveTab('stats')}
@@ -236,7 +292,7 @@ export function App() {
               className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
             >
               <User className="w-4 h-4" />
-              <span>Profile</span>
+              <span>Account</span>
             </button>
           </nav>
 
@@ -255,6 +311,21 @@ export function App() {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Add Title</span>
             </button>
+
+            {/* Clerk User Authentication Widget */}
+            <div className="flex items-center pl-2 border-l border-slate-800">
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="px-3.5 py-2 rounded-xl bg-[#1e2740] hover:bg-[#253254] text-indigo-300 font-bold text-xs border border-slate-700 transition flex items-center space-x-1.5 shadow">
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </div>
           </div>
         </header>
 
@@ -266,107 +337,123 @@ export function App() {
             <div className="space-y-8 animate-fadeIn">
               
               {/* Hero Banner Feature */}
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-[#161d30] group cursor-pointer"
-                   onClick={() => setSelectedItem(items[0])}>
-                <div className="absolute inset-0 z-0 opacity-40 group-hover:opacity-50 transition duration-500">
-                  <img src={items[0]?.coverImage} alt={items[0]?.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f1523] via-[#0f1523]/80 to-transparent" />
-                </div>
-                <div className="relative z-10 p-6 lg:p-10 flex flex-col justify-center min-h-[280px] max-w-xl">
-                  <div className="flex items-center space-x-2.5 mb-3">
-                    <span className="px-3 py-1 rounded-lg bg-indigo-500 text-white font-extrabold text-[11px] tracking-wider uppercase shadow">
-                      Up Next
-                    </span>
-                    <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700/50">
-                      {getMediaIcon(items[0]?.type)} {getTypeLabel(items[0]?.type)}
-                    </span>
+              {firstWatchingItem ? (
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-[#161d30] group cursor-pointer"
+                     onClick={() => setSelectedItem(firstWatchingItem)}>
+                  <div className="absolute inset-0 z-0 opacity-40 group-hover:opacity-50 transition duration-500">
+                    <img src={firstWatchingItem.coverImage} alt={firstWatchingItem.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#0f1523] via-[#0f1523]/80 to-transparent" />
                   </div>
-                  <h2 className="text-3xl lg:text-4xl font-black text-white mb-2 leading-tight drop-shadow-md">
-                    {items[0]?.title}
-                  </h2>
-                  <p className="text-sm text-slate-300 line-clamp-2 mb-6 font-normal">
-                    {items[0]?.synopsis}
-                  </p>
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 backdrop-blur-md border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black text-sm">
-                        S3 E3
-                      </div>
-                      <div>
-                        <div className="text-xs text-indigo-400 font-bold">Episode 3 of 26</div>
-                        <div className="text-xs text-slate-300">Rhaenyra Triumphant</div>
-                      </div>
+                  <div className="relative z-10 p-6 lg:p-10 flex flex-col justify-center min-h-[280px] max-w-xl">
+                    <div className="flex items-center space-x-2.5 mb-3">
+                      <span className="px-3 py-1 rounded-lg bg-indigo-500 text-white font-extrabold text-[11px] tracking-wider uppercase shadow">
+                        Up Next
+                      </span>
+                      <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700/50">
+                        {getMediaIcon(firstWatchingItem.type)} {getTypeLabel(firstWatchingItem.type)}
+                      </span>
                     </div>
-                    <button 
-                      onClick={(e) => handleQuickCompleteNext(items[0].id, e)}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 flex items-center space-x-2 transition"
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Mark Watched</span>
-                    </button>
+                    <h2 className="text-3xl lg:text-4xl font-black text-white mb-2 leading-tight drop-shadow-md">
+                      {firstWatchingItem.title}
+                    </h2>
+                    <p className="text-sm text-slate-300 line-clamp-2 mb-6 font-normal">
+                      {firstWatchingItem.synopsis}
+                    </p>
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 backdrop-blur-md border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black text-sm">
+                          {firstWatchingItem.unitName[0]}1
+                        </div>
+                        <div>
+                          <div className="text-xs text-indigo-400 font-bold">Progress: {firstWatchingItem.episodes.filter(e => e.watched).length} / {firstWatchingItem.totalProgress}</div>
+                          <div className="text-xs text-slate-300">Keep up your streak!</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => handleQuickCompleteNext(firstWatchingItem.id, e)}
+                        className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 flex items-center space-x-2 transition"
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>Mark Next Watched</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Watch Next List */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
-                    <Flame className="w-5 h-5 text-indigo-400" /> Continue Watching & Reading
-                  </h3>
-                  <button onClick={() => setActiveTab('shelf')} className="text-xs text-indigo-400 hover:underline font-bold">
-                    View Full Shelf ({items.length})
+              ) : (
+                <div className="text-center py-16 bg-[#161d30] rounded-3xl border border-slate-800">
+                  <Sparkles className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-white mb-1">Your personal shelf is empty!</h3>
+                  <p className="text-xs text-slate-400 mb-4">Add your favorite TV shows, movies, comics, or anime to start tracking.</p>
+                  <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30"
+                  >
+                    Add Your First Title
                   </button>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.filter(i => i.status === 'watching').map((item) => {
-                    const nextEp = item.episodes.find(ep => !ep.watched) || item.episodes[item.episodes.length - 1];
-                    const percent = Math.round((item.episodes.filter(e => e.watched).length / (item.totalProgress || 1)) * 100);
+              {/* Watch Next List */}
+              {items.filter(i => i.status === 'watching').length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
+                      <Flame className="w-5 h-5 text-indigo-400" /> Continue Watching & Reading
+                    </h3>
+                    <button onClick={() => setActiveTab('shelf')} className="text-xs text-indigo-400 hover:underline font-bold">
+                      View Full Shelf ({items.length})
+                    </button>
+                  </div>
 
-                    return (
-                      <div 
-                        key={item.id}
-                        onClick={() => setSelectedItem(item)}
-                        className="bg-[#161d30] hover:bg-[#1a233c] border border-slate-800/80 rounded-2xl p-4 flex items-center space-x-4 transition cursor-pointer group shadow-lg"
-                      >
-                        <div className="relative w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-800 shadow">
-                          <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                          <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md backdrop-blur-sm">
-                            {getMediaIcon(item.type)}
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {items.filter(i => i.status === 'watching').map((item) => {
+                      const nextEp = item.episodes.find(ep => !ep.watched) || item.episodes[item.episodes.length - 1];
+                      const percent = Math.round((item.episodes.filter(e => e.watched).length / (item.totalProgress || 1)) * 100);
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                              {item.unitName} {nextEp.number} / {item.totalProgress || '?'}
-                            </span>
-                          </div>
-                          <h4 className="text-sm font-bold text-white truncate mb-0.5 group-hover:text-indigo-400 transition">
-                            {item.title}
-                          </h4>
-                          <p className="text-xs text-slate-400 truncate font-medium">
-                            {nextEp.title}
-                          </p>
-
-                          <div className="mt-2.5 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={(e) => handleQuickCompleteNext(item.id, e)}
-                          className="w-10 h-10 rounded-full border border-slate-700 bg-[#1e2740] hover:bg-indigo-600 hover:border-indigo-600 text-slate-300 hover:text-white flex items-center justify-center transition shadow shrink-0"
-                          title="Mark next as watched"
+                      return (
+                        <div 
+                          key={item.id}
+                          onClick={() => setSelectedItem(item)}
+                          className="bg-[#161d30] hover:bg-[#1a233c] border border-slate-800/80 rounded-2xl p-4 flex items-center space-x-4 transition cursor-pointer group shadow-lg"
                         >
-                          <Check className="w-4 h-4 stroke-[3]" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="relative w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-800 shadow">
+                            <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                            <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md backdrop-blur-sm">
+                              {getMediaIcon(item.type)}
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                {item.unitName} {nextEp.number} / {item.totalProgress || '?'}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-white truncate mb-0.5 group-hover:text-indigo-400 transition">
+                              {item.title}
+                            </h4>
+                            <p className="text-xs text-slate-400 truncate font-medium">
+                              {nextEp.title}
+                            </p>
+
+                            <div className="mt-2.5 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={(e) => handleQuickCompleteNext(item.id, e)}
+                            className="w-10 h-10 rounded-full border border-slate-700 bg-[#1e2740] hover:bg-indigo-600 hover:border-indigo-600 text-slate-300 hover:text-white flex items-center justify-center transition shadow shrink-0"
+                            title="Mark next as watched"
+                          >
+                            <Check className="w-4 h-4 stroke-[3]" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick Categories Bar */}
               <div className="pt-2">
@@ -415,8 +502,8 @@ export function App() {
             <div className="space-y-6 animate-fadeIn">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <h2 className="text-2xl font-black text-white">Your Full Shelf</h2>
-                  <p className="text-xs text-slate-400">Managing all your tracked comics, movies, shows, and anime</p>
+                  <h2 className="text-2xl font-black text-white">Your Personal Shelf</h2>
+                  <p className="text-xs text-slate-400">Private vault for logged-in user: {user ? user.fullName || user.username || user.primaryEmailAddress?.emailAddress : 'Guest User'}</p>
                 </div>
                 
                 <div className="flex items-center space-x-3">
@@ -568,8 +655,8 @@ export function App() {
               {filteredItems.length === 0 && (
                 <div className="text-center py-20 bg-[#161d30] rounded-3xl border border-slate-800 mt-4">
                   <Bookmark className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <h3 className="text-base font-bold text-white mb-1">No media found</h3>
-                  <p className="text-xs text-slate-400 mb-4">Try changing filters or add a new title to your shelf.</p>
+                  <h3 className="text-base font-bold text-white mb-1">No media found in your account</h3>
+                  <p className="text-xs text-slate-400 mb-4">Add your favorite series to build your private collection.</p>
                   <button 
                     onClick={() => setIsAddModalOpen(true)}
                     className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30"
@@ -585,8 +672,8 @@ export function App() {
           {activeTab === 'stats' && (
             <div className="space-y-6 animate-fadeIn max-w-3xl mx-auto">
               <div>
-                <h2 className="text-2xl font-black text-white mb-1">Your Tracking Analytics</h2>
-                <p className="text-xs text-slate-400">Pleasant and comprehensive overview of your entertainment habits</p>
+                <h2 className="text-2xl font-black text-white mb-1">Your Personal Analytics</h2>
+                <p className="text-xs text-slate-400">Tracking stats for {user ? user.fullName || user.primaryEmailAddress?.emailAddress : 'Guest Account'}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -664,25 +751,29 @@ export function App() {
             <div className="space-y-6 animate-fadeIn max-w-xl mx-auto">
               <div className="flex items-center space-x-5 bg-[#161d30] p-6 rounded-3xl border border-slate-800 shadow-lg">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-black shadow-xl">
-                  RS
+                  {user ? (user.firstName ? user.firstName[0] : 'U') : 'G'}
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white">Rohail Shah</h3>
-                  <p className="text-xs text-indigo-400 font-bold">Shelfie Pro Collector</p>
-                  <a href="https://github.com/rohailshah/shelfie" target="_blank" rel="noreferrer" className="text-xs text-slate-400 hover:text-white mt-1 flex items-center gap-1 underline">
-                    github.com/rohailshah/shelfie <ArrowUpRight className="w-3 h-3" />
-                  </a>
+                  <h3 className="text-xl font-black text-white">{user ? user.fullName || user.primaryEmailAddress?.emailAddress : 'Guest Account'}</h3>
+                  <p className="text-xs text-indigo-400 font-bold">{user ? 'Signed in via Clerk Auth (Free tier)' : 'Guest Mode (Sign in to sync across devices)'}</p>
+                  <div className="mt-2">
+                    <SignedIn>
+                      <UserButton afterSignOutUrl="/" />
+                    </SignedIn>
+                    <SignedOut>
+                      <SignInButton mode="modal">
+                        <button className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition">
+                          Sign In to Your Account
+                        </button>
+                      </SignInButton>
+                    </SignedOut>
+                  </div>
                 </div>
               </div>
 
               <div className="bg-[#161d30] border border-slate-800 p-6 rounded-3xl space-y-4 shadow-lg">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Repository & Sync</h4>
-                <p className="text-xs text-slate-300">Your Shelfie app is fully published and synced to your GitHub profile repository.</p>
-                
-                <div className="p-4 rounded-2xl bg-[#0f1523] border border-slate-800 text-xs font-mono text-slate-300 space-y-1.5">
-                  <div>git remote -v</div>
-                  <div className="text-indigo-400">origin https://github.com/rohailshah/shelfie.git (push)</div>
-                </div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Multi-User Isolation</h4>
+                <p className="text-xs text-slate-300">Each user account maintains its own private shelf and progress in secure browser storage. Switch accounts or sign in on any device to access your personal collection!</p>
               </div>
             </div>
           )}
@@ -760,7 +851,7 @@ export function App() {
             className={`flex flex-col items-center space-y-1 transition ${activeTab === 'profile' ? 'text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <User className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Profile</span>
+            <span className="text-[10px] font-bold">Account</span>
           </button>
         </nav>
 
@@ -875,16 +966,49 @@ export function App() {
               </div>
 
               <form onSubmit={handleCreateItem} className="space-y-4">
-                <div>
+                <div className="relative">
                   <label className="text-xs font-bold text-slate-400 mb-1 block">Title Name</label>
                   <input 
                     type="text" 
                     required
                     placeholder="e.g. Cyberpunk Edgerunners"
                     value={newTitle}
-                    onChange={e => setNewTitle(e.target.value)}
+                    onChange={e => { setNewTitle(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
                     className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                   />
+                  {isSearching && <div className="absolute right-3 top-9 flex items-center space-x-1.5 text-xs text-slate-400"><Loader2 className="w-3 h-3 animate-spin" /> Searching…</div>}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-slate-700 bg-[#121826] shadow-2xl">
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={`${s.source}-${s.externalId}-${i}`}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => selectSuggestion(s)}
+                          className="flex w-full items-center space-x-3 px-3 py-2 text-left hover:bg-slate-800 border-b border-slate-800 last:border-0"
+                        >
+                          {s.coverUrl && (
+                            <img src={s.coverUrl} alt="" className="h-10 w-7 rounded object-cover bg-slate-800" loading="lazy" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-bold text-white">{s.title}</div>
+                            <div className="truncate text-[10px] text-slate-400 flex items-center gap-1.5">
+                              {s.year && <span>{s.year}</span>}
+                              {s.year && s.genres.length > 0 && <span>•</span>}
+                              {s.genres.slice(0, 2).join(', ')}
+                              <span className="px-1.5 py-0.5 text-[9px] bg-slate-800 rounded text-slate-500 uppercase">{s.source}</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showSuggestions && !isSearching && suggestions.length === 0 && newTitle.length >= 2 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-700 bg-[#121826] shadow-2xl p-4 text-center">
+                      <p className="text-xs text-slate-400">No results found. Try a different search or fill manually.</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -909,7 +1033,7 @@ export function App() {
                       min={1}
                       value={newTotal}
                       onChange={e => setNewTotal(Number(e.target.value))}
-                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
@@ -922,6 +1046,9 @@ export function App() {
                     onChange={e => setNewCover(e.target.value)}
                     className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                   />
+                  {newCover && (
+                    <img src={newCover} alt="Cover preview" className="mt-2 h-24 w-auto rounded-lg object-cover border border-slate-700" />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -930,7 +1057,7 @@ export function App() {
                     <input 
                       type="number"
                       value={newYear}
-                      onChange={e => setNewYear(Number(e.target.value))}
+                      onChange={e => setNewYear(e.target.value)}
                       className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
@@ -969,6 +1096,14 @@ export function App() {
 
       </div>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <ShelfieApp />
+    </ClerkProvider>
   );
 }
 
