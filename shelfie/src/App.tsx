@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Tv, Film, BookOpen, Flame, Check, Plus, Search, 
   BarChart2, User, Trash2, ChevronRight, 
-  CheckCircle2, X, Sparkles, Bookmark
+  CheckCircle2, X, Sparkles, Bookmark, LayoutGrid, List,
+  Calendar, Star, Filter, Heart, Clock, ArrowUpRight
 } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from './types';
 import { INITIAL_ITEMS } from './types';
@@ -16,6 +17,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'shelf' | 'stats' | 'profile' | 'search'>('home');
   const [filterType, setFilterType] = useState<MediaType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<MediaStatus | 'all'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -25,7 +27,6 @@ export function App() {
     localStorage.setItem('shelfie_items', JSON.stringify(items));
   }, [items]);
 
-  // Quick toggle next episode / issue / chapter
   const handleQuickCompleteNext = (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setItems(prev => prev.map(item => {
@@ -154,7 +155,6 @@ export function App() {
     setNewSynopsis('');
   };
 
-  // Stats calculations
   const totalWatchedEpisodes = items.reduce((acc, item) => acc + item.episodes.filter(ep => ep.watched).length, 0);
   const totalCompletedShows = items.filter(item => item.status === 'completed').length;
 
@@ -167,10 +167,10 @@ export function App() {
 
   const getMediaIcon = (type: MediaType) => {
     switch (type) {
-      case 'tv': return <Tv className="w-4 h-4 text-orange-400" />;
-      case 'movie': return <Film className="w-4 h-4 text-purple-400" />;
-      case 'comic': return <BookOpen className="w-4 h-4 text-blue-400" />;
-      case 'anime': return <Flame className="w-4 h-4 text-red-400" />;
+      case 'tv': return <Tv className="w-4 h-4 text-amber-400" />;
+      case 'movie': return <Film className="w-4 h-4 text-violet-400" />;
+      case 'comic': return <BookOpen className="w-4 h-4 text-cyan-400" />;
+      case 'anime': return <Flame className="w-4 h-4 text-rose-400" />;
     }
   };
 
@@ -184,103 +184,142 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#121214] text-gray-100 font-sans antialiased pb-28 selection:bg-orange-500 selection:text-white">
-      {/* Mobile Device Container Preview Frame */}
-      <div className="max-w-md mx-auto min-h-screen bg-[#161619] shadow-2xl relative flex flex-col border-x border-gray-800">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white flex flex-col items-center justify-start pb-16">
+      
+      {/* DESKTOP & MOBILE RESPONSIVE WRAPPER */}
+      <div className="w-full max-w-6xl min-h-screen bg-[#0f1523] lg:my-6 lg:rounded-3xl lg:border lg:border-slate-800/80 lg:shadow-2xl overflow-hidden flex flex-col relative">
         
-        {/* Top Header */}
-        <header className="px-5 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-[#161619]/90 backdrop-blur-md z-30 border-b border-gray-800/60">
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-rose-500 to-purple-600">
-                shelfie
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-semibold border border-orange-500/30">
-                PRO
-              </span>
+        {/* TOP HEADER */}
+        <header className="px-6 py-4 flex items-center justify-between sticky top-0 bg-[#0f1523]/90 backdrop-blur-xl z-30 border-b border-slate-800/60">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <p className="text-xs text-gray-400 font-medium">Track comics, movies, tv & anime with style 😍</p>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
+                  Shelfie
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                  BINGERS STYLE
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 hidden sm:block">Track comics, movies, tv & anime per episode/issue with pleasant dark mode</p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
+
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1 bg-[#161d30] p-1.5 rounded-2xl border border-slate-800">
+            <button 
+              onClick={() => setActiveTab('home')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'home' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <Flame className="w-4 h-4" />
+              <span>Watch Next</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('shelf')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'shelf' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <Bookmark className="w-4 h-4" />
+              <span>Full Shelf</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('stats')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'stats' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              <span>Stats</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('profile')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <User className="w-4 h-4" />
+              <span>Profile</span>
+            </button>
+          </nav>
+
+          <div className="flex items-center space-x-3">
             <button 
               onClick={() => setActiveTab('search')}
-              className="w-10 h-10 rounded-full bg-[#222226] border border-gray-800 flex items-center justify-center text-gray-300 hover:text-white hover:bg-[#2c2c32] transition"
+              className="w-10 h-10 rounded-2xl bg-[#161d30] border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-[#1e2740] transition"
               title="Search"
             >
               <Search className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 hover:scale-105 transition"
-              title="Add New Media"
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 hover:opacity-95 transition flex items-center space-x-2"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Title</span>
             </button>
           </div>
         </header>
 
-        {/* Main Content Areas */}
-        <main className="flex-1 px-4 py-4">
+        {/* MAIN BODY CONTAINER */}
+        <main className="flex-1 p-6 lg:p-8 pb-28 md:pb-12">
           
-          {/* TAB 1: HOME (Watch Next / Continue Stream) */}
+          {/* TAB 1: HOME */}
           {activeTab === 'home' && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-8 animate-fadeIn">
               
-              {/* Hero Banner / Highlight Card */}
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-800 bg-gradient-to-b from-gray-900 to-[#1a1a1e] group cursor-pointer"
+              {/* Hero Banner Feature */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-[#161d30] group cursor-pointer"
                    onClick={() => setSelectedItem(items[0])}>
                 <div className="absolute inset-0 z-0 opacity-40 group-hover:opacity-50 transition duration-500">
                   <img src={items[0]?.coverImage} alt={items[0]?.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#161619] via-[#161619]/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f1523] via-[#0f1523]/80 to-transparent" />
                 </div>
-                <div className="relative z-10 p-6 flex flex-col justify-end min-h-[220px]">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="px-2.5 py-1 rounded-md bg-orange-500 text-white font-bold text-[10px] tracking-wider uppercase shadow">
+                <div className="relative z-10 p-6 lg:p-10 flex flex-col justify-center min-h-[280px] max-w-xl">
+                  <div className="flex items-center space-x-2.5 mb-3">
+                    <span className="px-3 py-1 rounded-lg bg-indigo-500 text-white font-extrabold text-[11px] tracking-wider uppercase shadow">
                       Up Next
                     </span>
-                    <span className="text-xs text-gray-300 font-medium flex items-center gap-1">
+                    <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700/50">
                       {getMediaIcon(items[0]?.type)} {getTypeLabel(items[0]?.type)}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-extrabold text-white mb-1 leading-tight drop-shadow">
+                  <h2 className="text-3xl lg:text-4xl font-black text-white mb-2 leading-tight drop-shadow-md">
                     {items[0]?.title}
                   </h2>
-                  <p className="text-sm text-gray-300 line-clamp-2 mb-4 font-normal">
+                  <p className="text-sm text-slate-300 line-clamp-2 mb-6 font-normal">
                     {items[0]?.synopsis}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white font-bold text-sm">
-                        S03E03
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 backdrop-blur-md border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black text-sm">
+                        S3 E3
                       </div>
                       <div>
-                        <div className="text-xs text-orange-400 font-semibold">Episode 3 of 26</div>
-                        <div className="text-xs text-gray-400">Rhaenyra Triumphant</div>
+                        <div className="text-xs text-indigo-400 font-bold">Episode 3 of 26</div>
+                        <div className="text-xs text-slate-300">Rhaenyra Triumphant</div>
                       </div>
                     </div>
                     <button 
                       onClick={(e) => handleQuickCompleteNext(items[0].id, e)}
-                      className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-lg shadow-orange-500/40 flex items-center space-x-1.5 transition"
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 flex items-center space-x-2 transition"
                     >
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Watched</span>
+                      <span>Mark Watched</span>
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Watch Next List */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
-                    <Flame className="w-5 h-5 text-orange-500" /> Continue Watching & Reading
+                  <h3 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-indigo-400" /> Continue Watching & Reading
                   </h3>
-                  <button onClick={() => setActiveTab('shelf')} className="text-xs text-orange-400 hover:underline font-semibold">
-                    View All ({items.length})
+                  <button onClick={() => setActiveTab('shelf')} className="text-xs text-indigo-400 hover:underline font-bold">
+                    View Full Shelf ({items.length})
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {items.filter(i => i.status === 'watching').map((item) => {
                     const nextEp = item.episodes.find(ep => !ep.watched) || item.episodes[item.episodes.length - 1];
                     const percent = Math.round((item.episodes.filter(e => e.watched).length / (item.totalProgress || 1)) * 100);
@@ -289,37 +328,36 @@ export function App() {
                       <div 
                         key={item.id}
                         onClick={() => setSelectedItem(item)}
-                        className="bg-[#202024] hover:bg-[#27272c] border border-gray-800/80 rounded-2xl p-3 flex items-center space-x-4 transition cursor-pointer group shadow-md"
+                        className="bg-[#161d30] hover:bg-[#1a233c] border border-slate-800/80 rounded-2xl p-4 flex items-center space-x-4 transition cursor-pointer group shadow-lg"
                       >
-                        <div className="relative w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-gray-800 shadow">
+                        <div className="relative w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-800 shadow">
                           <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                          <div className="absolute top-1 left-1">
+                          <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md backdrop-blur-sm">
                             {getMediaIcon(item.type)}
                           </div>
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-0.5">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
                               {item.unitName} {nextEp.number} / {item.totalProgress || '?'}
                             </span>
                           </div>
-                          <h4 className="text-sm font-bold text-white truncate mb-0.5 group-hover:text-orange-400 transition">
+                          <h4 className="text-sm font-bold text-white truncate mb-0.5 group-hover:text-indigo-400 transition">
                             {item.title}
                           </h4>
-                          <p className="text-xs text-gray-400 truncate font-medium">
+                          <p className="text-xs text-slate-400 truncate font-medium">
                             {nextEp.title}
                           </p>
 
-                          {/* Mini Progress Bar */}
-                          <div className="mt-2 w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-orange-500 to-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+                          <div className="mt-2.5 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
                           </div>
                         </div>
 
                         <button
                           onClick={(e) => handleQuickCompleteNext(item.id, e)}
-                          className="w-10 h-10 rounded-full border border-gray-700 bg-[#2a2a30] hover:bg-orange-500 hover:border-orange-500 text-gray-300 hover:text-white flex items-center justify-center transition shadow shrink-0"
+                          className="w-10 h-10 rounded-full border border-slate-700 bg-[#1e2740] hover:bg-indigo-600 hover:border-indigo-600 text-slate-300 hover:text-white flex items-center justify-center transition shadow shrink-0"
                           title="Mark next as watched"
                         >
                           <Check className="w-4 h-4 stroke-[3]" />
@@ -332,39 +370,39 @@ export function App() {
 
               {/* Quick Categories Bar */}
               <div className="pt-2">
-                <h3 className="text-sm font-bold text-gray-300 mb-3 tracking-wide uppercase">Explore Collections</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <h3 className="text-sm font-bold text-slate-300 mb-3 tracking-wide uppercase">Explore Collections</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div 
                     onClick={() => { setFilterType('tv'); setActiveTab('shelf'); }}
-                    className="p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 cursor-pointer hover:border-orange-500/40 transition"
+                    className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 cursor-pointer hover:border-amber-500/40 transition group"
                   >
-                    <Tv className="w-6 h-6 text-orange-400 mb-2" />
+                    <Tv className="w-6 h-6 text-amber-400 mb-2 group-hover:scale-110 transition" />
                     <div className="font-bold text-white text-sm">TV Shows</div>
-                    <div className="text-xs text-gray-400">{items.filter(i => i.type === 'tv').length} series logged</div>
+                    <div className="text-xs text-slate-400">{items.filter(i => i.type === 'tv').length} series logged</div>
                   </div>
                   <div 
                     onClick={() => { setFilterType('comic'); setActiveTab('shelf'); }}
-                    className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition"
+                    className="p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 cursor-pointer hover:border-cyan-500/40 transition group"
                   >
-                    <BookOpen className="w-6 h-6 text-blue-400 mb-2" />
+                    <BookOpen className="w-6 h-6 text-cyan-400 mb-2 group-hover:scale-110 transition" />
                     <div className="font-bold text-white text-sm">Comics & Books</div>
-                    <div className="text-xs text-gray-400">{items.filter(i => i.type === 'comic').length} issues logged</div>
+                    <div className="text-xs text-slate-400">{items.filter(i => i.type === 'comic').length} issues logged</div>
                   </div>
                   <div 
                     onClick={() => { setFilterType('anime'); setActiveTab('shelf'); }}
-                    className="p-4 rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 cursor-pointer hover:border-red-500/40 transition"
+                    className="p-5 rounded-2xl bg-gradient-to-br from-rose-500/10 to-rose-500/5 border border-rose-500/20 cursor-pointer hover:border-rose-500/40 transition group"
                   >
-                    <Flame className="w-6 h-6 text-red-400 mb-2" />
+                    <Flame className="w-6 h-6 text-rose-400 mb-2 group-hover:scale-110 transition" />
                     <div className="font-bold text-white text-sm">Anime & Manga</div>
-                    <div className="text-xs text-gray-400">{items.filter(i => i.type === 'anime').length} series logged</div>
+                    <div className="text-xs text-slate-400">{items.filter(i => i.type === 'anime').length} series logged</div>
                   </div>
                   <div 
                     onClick={() => { setFilterType('movie'); setActiveTab('shelf'); }}
-                    className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 cursor-pointer hover:border-purple-500/40 transition"
+                    className="p-5 rounded-2xl bg-gradient-to-br from-violet-500/10 to-violet-500/5 border border-violet-500/20 cursor-pointer hover:border-violet-500/40 transition group"
                   >
-                    <Film className="w-6 h-6 text-purple-400 mb-2" />
+                    <Film className="w-6 h-6 text-violet-400 mb-2 group-hover:scale-110 transition" />
                     <div className="font-bold text-white text-sm">Movies</div>
-                    <div className="text-xs text-gray-400">{items.filter(i => i.type === 'movie').length} films logged</div>
+                    <div className="text-xs text-slate-400">{items.filter(i => i.type === 'movie').length} films logged</div>
                   </div>
                 </div>
               </div>
@@ -372,14 +410,33 @@ export function App() {
             </div>
           )}
 
-          {/* TAB 2: SHELF (Full Media Vault) */}
+          {/* TAB 2: SHELF */}
           {activeTab === 'shelf' && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-white">Your Shelf</h2>
-                <span className="text-xs px-2.5 py-1 bg-gray-800 text-gray-300 rounded-lg font-bold">
-                  {filteredItems.length} items
-                </span>
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-white">Your Full Shelf</h2>
+                  <p className="text-xs text-slate-400">Managing all your tracked comics, movies, shows, and anime</p>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="flex bg-[#161d30] border border-slate-800 rounded-xl p-1">
+                    <button 
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 rounded-lg text-xs font-bold transition ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                      title="Grid View"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded-lg text-xs font-bold transition ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Filter Tabs */}
@@ -388,10 +445,10 @@ export function App() {
                   <button
                     key={type}
                     onClick={() => setFilterType(type)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                       filterType === type 
-                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30' 
-                        : 'bg-[#202024] text-gray-400 hover:text-white border border-gray-800'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
+                        : 'bg-[#161d30] text-slate-400 hover:text-white border border-slate-800'
                     }`}
                   >
                     {type === 'all' ? 'All Media' : getTypeLabel(type)}
@@ -400,15 +457,15 @@ export function App() {
               </div>
 
               {/* Status Filter */}
-              <div className="flex space-x-2 pb-1">
+              <div className="flex space-x-2">
                 {(['all', 'watching', 'completed'] as const).map(status => (
                   <button
                     key={status}
                     onClick={() => setFilterStatus(status)}
-                    className={`text-[11px] font-semibold px-3 py-1 rounded-lg capitalize transition ${
+                    className={`text-xs font-semibold px-3.5 py-1.5 rounded-xl capitalize transition ${
                       filterStatus === status 
-                        ? 'bg-gray-200 text-gray-900 font-bold' 
-                        : 'bg-[#1e1e22] text-gray-400 hover:text-gray-200 border border-gray-800'
+                        ? 'bg-slate-200 text-slate-900 font-bold' 
+                        : 'bg-[#161d30] text-slate-400 hover:text-slate-200 border border-slate-800'
                     }`}
                   >
                     {status}
@@ -416,63 +473,106 @@ export function App() {
                 ))}
               </div>
 
-              {/* Grid of Items */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                {filteredItems.map(item => {
-                  const watchedCount = item.episodes.filter(e => e.watched).length;
-                  const pct = Math.round((watchedCount / (item.totalProgress || 1)) * 100);
+              {/* Grid View */}
+              {viewMode === 'grid' ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
+                  {filteredItems.map(item => {
+                    const watchedCount = item.episodes.filter(e => e.watched).length;
+                    const pct = Math.round((watchedCount / (item.totalProgress || 1)) * 100);
 
-                  return (
-                    <div 
-                      key={item.id}
-                      onClick={() => setSelectedItem(item)}
-                      className="bg-[#202024] border border-gray-800 rounded-2xl overflow-hidden shadow-lg hover:border-orange-500/50 transition cursor-pointer flex flex-col group"
-                    >
-                      <div className="relative h-44 w-full bg-gray-900 overflow-hidden">
-                        <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#202024] via-transparent to-transparent opacity-80" />
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md flex items-center space-x-1 border border-white/10 text-[10px] font-bold text-white">
-                          {getMediaIcon(item.type)}
-                          <span className="capitalize">{item.type}</span>
-                        </div>
-                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-orange-500/90 text-white text-[10px] font-extrabold shadow">
-                          ★ {item.rating}
-                        </div>
-                      </div>
-
-                      <div className="p-3 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h4 className="text-sm font-bold text-white truncate mb-1 group-hover:text-orange-400 transition">
-                            {item.title}
-                          </h4>
-                          <div className="text-[11px] text-gray-400 font-medium mb-3">
-                            {watchedCount} / {item.totalProgress || '?'} {item.unitName}s
+                    return (
+                      <div 
+                        key={item.id}
+                        onClick={() => setSelectedItem(item)}
+                        className="bg-[#161d30] border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:border-indigo-500/50 transition cursor-pointer flex flex-col group"
+                      >
+                        <div className="relative h-52 w-full bg-slate-950 overflow-hidden">
+                          <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#161d30] via-transparent to-transparent opacity-80" />
+                          <div className="absolute top-2 left-2 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md flex items-center space-x-1.5 border border-white/10 text-[10px] font-bold text-white">
+                            {getMediaIcon(item.type)}
+                            <span className="capitalize">{item.type}</span>
+                          </div>
+                          <div className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-indigo-600/90 text-white text-[10px] font-extrabold shadow">
+                            ★ {item.rating}
                           </div>
                         </div>
 
-                        <div>
-                          <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1 font-semibold">
-                            <span>Progress</span>
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-bold text-white truncate mb-1 group-hover:text-indigo-400 transition">
+                              {item.title}
+                            </h4>
+                            <div className="text-[11px] text-slate-400 font-medium mb-3">
+                              {watchedCount} / {item.totalProgress || '?'} {item.unitName}s
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1 font-semibold">
+                              <span>Progress</span>
+                              <span>{pct}%</span>
+                            </div>
+                            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* List View */
+                <div className="space-y-3 pt-2">
+                  {filteredItems.map(item => {
+                    const watchedCount = item.episodes.filter(e => e.watched).length;
+                    const pct = Math.round((watchedCount / (item.totalProgress || 1)) * 100);
+
+                    return (
+                      <div 
+                        key={item.id}
+                        onClick={() => setSelectedItem(item)}
+                        className="bg-[#161d30] border border-slate-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:border-indigo-500/50 transition group"
+                      >
+                        <img src={item.coverImage} alt={item.title} className="w-14 h-18 object-cover rounded-xl shadow shrink-0" />
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 text-[10px] font-bold text-indigo-400 uppercase mb-1">
+                            {getMediaIcon(item.type)}
+                            <span>{getTypeLabel(item.type)}</span>
+                            <span>•</span>
+                            <span>{item.releaseYear}</span>
+                          </div>
+                          <h4 className="text-base font-bold text-white truncate group-hover:text-indigo-400 transition">{item.title}</h4>
+                          <p className="text-xs text-slate-400 truncate">{item.genres.join(', ')}</p>
+                        </div>
+
+                        <div className="hidden sm:block w-32">
+                          <div className="flex justify-between text-xs text-slate-400 mb-1 font-semibold">
+                            <span>{watchedCount}/{item.totalProgress}</span>
                             <span>{pct}%</span>
                           </div>
-                          <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-orange-500 to-rose-500 h-full rounded-full" style={{ width: `${pct}%` }} />
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full" style={{ width: `${pct}%` }} />
                           </div>
                         </div>
+
+                        <ChevronRight className="w-5 h-5 text-slate-500" />
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {filteredItems.length === 0 && (
-                <div className="text-center py-16 bg-[#202024] rounded-3xl border border-gray-800 mt-4">
-                  <Bookmark className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                <div className="text-center py-20 bg-[#161d30] rounded-3xl border border-slate-800 mt-4">
+                  <Bookmark className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                   <h3 className="text-base font-bold text-white mb-1">No media found</h3>
-                  <p className="text-xs text-gray-400 mb-4">Try changing filters or add a new title to your shelf.</p>
+                  <p className="text-xs text-slate-400 mb-4">Try changing filters or add a new title to your shelf.</p>
                   <button 
                     onClick={() => setIsAddModalOpen(true)}
-                    className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-500/30"
+                    className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30"
                   >
                     Add Title Now
                   </button>
@@ -481,152 +581,107 @@ export function App() {
             </div>
           )}
 
-          {/* TAB 3: STATS (Tracking Insights) */}
+          {/* TAB 3: STATS */}
           {activeTab === 'stats' && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6 animate-fadeIn max-w-3xl mx-auto">
               <div>
-                <h2 className="text-xl font-black text-white mb-1">Your Tracking Stats</h2>
-                <p className="text-xs text-gray-400">Detailed analytics of your entertainment habits</p>
+                <h2 className="text-2xl font-black text-white mb-1">Your Tracking Analytics</h2>
+                <p className="text-xs text-slate-400">Pleasant and comprehensive overview of your entertainment habits</p>
               </div>
 
-              {/* Big Stat Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#202024] border border-gray-800 p-4 rounded-2xl flex flex-col justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 mb-3">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[#161d30] border border-slate-800 p-6 rounded-3xl flex items-center justify-between shadow-lg">
                   <div>
-                    <div className="text-2xl font-black text-white">{totalWatchedEpisodes}</div>
-                    <div className="text-xs text-gray-400 font-semibold mt-0.5">Episodes / Issues Logged</div>
+                    <div className="text-3xl font-black text-white mb-1">{totalWatchedEpisodes}</div>
+                    <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Episodes & Issues Logged</div>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <CheckCircle2 className="w-7 h-7" />
                   </div>
                 </div>
 
-                <div className="bg-[#202024] border border-gray-800 p-4 rounded-2xl flex flex-col justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3">
-                    <BarChart2 className="w-5 h-5" />
-                  </div>
+                <div className="bg-[#161d30] border border-slate-800 p-6 rounded-3xl flex items-center justify-between shadow-lg">
                   <div>
-                    <div className="text-2xl font-black text-white">{totalCompletedShows}</div>
-                    <div className="text-xs text-gray-400 font-semibold mt-0.5">Completed Series</div>
+                    <div className="text-3xl font-black text-white mb-1">{totalCompletedShows}</div>
+                    <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Fully Completed Series & Films</div>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <BarChart2 className="w-7 h-7" />
                   </div>
                 </div>
               </div>
 
-              {/* Breakdown by Media Type */}
-              <div className="bg-[#202024] border border-gray-800 p-5 rounded-2xl space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Media Breakdown</h3>
+              <div className="bg-[#161d30] border border-slate-800 p-6 rounded-3xl space-y-5 shadow-lg">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Format Distribution</h3>
                 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="flex items-center gap-1.5"><Tv className="w-4 h-4 text-orange-400" /> TV Shows</span>
-                      <span className="text-gray-400">{items.filter(i => i.type === 'tv').length} titles</span>
+                    <div className="flex justify-between text-xs font-bold mb-1.5">
+                      <span className="flex items-center gap-2"><Tv className="w-4 h-4 text-amber-400" /> TV Shows</span>
+                      <span className="text-slate-400">{items.filter(i => i.type === 'tv').length} titles</span>
                     </div>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-orange-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'tv').length / (items.length || 1)) * 100}%` }} />
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'tv').length / (items.length || 1)) * 100}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-blue-400" /> Comics & Books</span>
-                      <span className="text-gray-400">{items.filter(i => i.type === 'comic').length} titles</span>
+                    <div className="flex justify-between text-xs font-bold mb-1.5">
+                      <span className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-cyan-400" /> Comics & Books</span>
+                      <span className="text-slate-400">{items.filter(i => i.type === 'comic').length} titles</span>
                     </div>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'comic').length / (items.length || 1)) * 100}%` }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="flex items-center gap-1.5"><Flame className="w-4 h-4 text-red-400" /> Anime & Manga</span>
-                      <span className="text-gray-400">{items.filter(i => i.type === 'anime').length} titles</span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-red-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'anime').length / (items.length || 1)) * 100}%` }} />
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-cyan-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'comic').length / (items.length || 1)) * 100}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="flex items-center gap-1.5"><Film className="w-4 h-4 text-purple-400" /> Movies</span>
-                      <span className="text-gray-400">{items.filter(i => i.type === 'movie').length} titles</span>
+                    <div className="flex justify-between text-xs font-bold mb-1.5">
+                      <span className="flex items-center gap-2"><Flame className="w-4 h-4 text-rose-400" /> Anime & Manga</span>
+                      <span className="text-slate-400">{items.filter(i => i.type === 'anime').length} titles</span>
                     </div>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'movie').length / (items.length || 1)) * 100}%` }} />
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-rose-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'anime').length / (items.length || 1)) * 100}%` }} />
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Achievement Badge */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-500/20 via-rose-500/20 to-purple-500/20 border border-orange-500/30 flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shrink-0">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Binge Master Supreme</h4>
-                  <p className="text-xs text-gray-300 font-medium">Logged over {totalWatchedEpisodes} items across all formats. Incredible dedication!</p>
+                  <div>
+                    <div className="flex justify-between text-xs font-bold mb-1.5">
+                      <span className="flex items-center gap-2"><Film className="w-4 h-4 text-violet-400" /> Movies</span>
+                      <span className="text-slate-400">{items.filter(i => i.type === 'movie').length} titles</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-violet-500 h-full rounded-full" style={{ width: `${(items.filter(i => i.type === 'movie').length / (items.length || 1)) * 100}%` }} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: PROFILE & GITHUB SYNC */}
+          {/* TAB 4: PROFILE */}
           {activeTab === 'profile' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="flex items-center space-x-4 bg-[#202024] p-5 rounded-3xl border border-gray-800">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white text-2xl font-black shadow-lg">
+            <div className="space-y-6 animate-fadeIn max-w-xl mx-auto">
+              <div className="flex items-center space-x-5 bg-[#161d30] p-6 rounded-3xl border border-slate-800 shadow-lg">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-black shadow-xl">
                   RS
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-white">Rohail Shah</h3>
-                  <p className="text-xs text-orange-400 font-semibold">Shelfie Pro Collector</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">github.com/rohailshah</p>
+                  <h3 className="text-xl font-black text-white">Rohail Shah</h3>
+                  <p className="text-xs text-indigo-400 font-bold">Shelfie Pro Collector</p>
+                  <a href="https://github.com/rohailshah/shelfie" target="_blank" rel="noreferrer" className="text-xs text-slate-400 hover:text-white mt-1 flex items-center gap-1 underline">
+                    github.com/rohailshah/shelfie <ArrowUpRight className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
 
-              {/* GitHub Push Integration Card */}
-              <div className="bg-[#202024] border border-gray-800 p-5 rounded-3xl space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-700 flex items-center justify-center text-white font-bold">
-                    GH
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">GitHub Repository Sync</h4>
-                    <p className="text-xs text-gray-400">Push Shelfie app codebase to your profile</p>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-gray-900 border border-gray-800 text-xs font-mono text-gray-300 space-y-2">
-                  <div>git remote add origin https://github.com/rohailshah/shelfie.git</div>
-                  <div>git push -u origin main</div>
-                </div>
-
-                <button 
-                  onClick={() => alert('Shelfie repository is fully prepared and ready for push to https://github.com/rohailshah/shelfie ! Run `git push` in your terminal.')}
-                  className="w-full py-3 rounded-xl bg-white text-gray-900 font-bold text-xs hover:bg-gray-100 transition shadow flex items-center justify-center space-x-2"
-                >
-                  <span>Push to Rohail's GitHub</span>
-                </button>
-              </div>
-
-              {/* App Preferences */}
-              <div className="bg-[#202024] border border-gray-800 p-5 rounded-3xl space-y-4">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Shelfie Preferences</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-medium">Dark Mode Theme</span>
-                    <span className="text-orange-400 font-bold">Bingers Dark</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-medium">Auto-Sync Cloud Backup</span>
-                    <span className="text-green-400 font-bold">Enabled</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-medium">Tracked Formats</span>
-                    <span className="text-gray-300 font-bold">TV, Movie, Comic, Anime</span>
-                  </div>
+              <div className="bg-[#161d30] border border-slate-800 p-6 rounded-3xl space-y-4 shadow-lg">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Repository & Sync</h4>
+                <p className="text-xs text-slate-300">Your Shelfie app is fully published and synced to your GitHub profile repository.</p>
+                
+                <div className="p-4 rounded-2xl bg-[#0f1523] border border-slate-800 text-xs font-mono text-slate-300 space-y-1.5">
+                  <div>git remote -v</div>
+                  <div className="text-indigo-400">origin https://github.com/rohailshah/shelfie.git (push)</div>
                 </div>
               </div>
             </div>
@@ -634,16 +689,16 @@ export function App() {
 
           {/* TAB 5: SEARCH */}
           {activeTab === 'search' && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4 animate-fadeIn max-w-2xl mx-auto">
               <div className="relative">
-                <Search className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-4 top-4 w-5 h-5 text-slate-400" />
                 <input 
                   type="text"
                   placeholder="Search titles, genres, comics..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   autoFocus
-                  className="w-full bg-[#202024] border border-gray-700 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition shadow-inner"
+                  className="w-full bg-[#161d30] border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner"
                 />
               </div>
 
@@ -652,20 +707,20 @@ export function App() {
                   <div 
                     key={item.id}
                     onClick={() => { setSelectedItem(item); setActiveTab('shelf'); }}
-                    className="bg-[#202024] border border-gray-800 p-3 rounded-2xl flex items-center space-x-3 cursor-pointer hover:border-orange-500/50 transition"
+                    className="bg-[#161d30] border border-slate-800 p-4 rounded-2xl flex items-center space-x-4 cursor-pointer hover:border-indigo-500/50 transition shadow-md"
                   >
-                    <img src={item.coverImage} alt={item.title} className="w-12 h-14 object-cover rounded-xl" />
+                    <img src={item.coverImage} alt={item.title} className="w-14 h-16 object-cover rounded-xl shadow" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 text-[10px] text-gray-400 font-bold uppercase">
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-bold uppercase">
                         {getMediaIcon(item.type)}
                         <span>{item.type}</span>
                         <span>•</span>
                         <span>{item.releaseYear}</span>
                       </div>
-                      <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
-                      <p className="text-xs text-gray-400 truncate">{item.genres.join(', ')}</p>
+                      <h4 className="text-base font-bold text-white truncate">{item.title}</h4>
+                      <p className="text-xs text-slate-400 truncate">{item.genres.join(', ')}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-5 h-5 text-slate-500" />
                   </div>
                 ))}
               </div>
@@ -674,11 +729,11 @@ export function App() {
 
         </main>
 
-        {/* BOTTOM FLOATING NAVIGATION BAR */}
-        <nav className="absolute bottom-4 left-4 right-4 bg-[#1f1f23]/95 backdrop-blur-xl border border-gray-800/80 rounded-2xl px-4 py-3 flex items-center justify-between shadow-2xl z-30">
+        {/* MOBILE BOTTOM FLOATING NAVIGATION BAR */}
+        <nav className="md:hidden absolute bottom-4 left-4 right-4 bg-[#161d30]/95 backdrop-blur-xl border border-slate-800 rounded-2xl px-4 py-3 flex items-center justify-between shadow-2xl z-30">
           <button 
             onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'home' ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-gray-200'}`}
+            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'home' ? 'text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <Flame className="w-5 h-5" />
             <span className="text-[10px] font-bold">Watch</span>
@@ -686,7 +741,7 @@ export function App() {
           
           <button 
             onClick={() => setActiveTab('shelf')}
-            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'shelf' ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-gray-200'}`}
+            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'shelf' ? 'text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <Bookmark className="w-5 h-5" />
             <span className="text-[10px] font-bold">Shelf</span>
@@ -694,7 +749,7 @@ export function App() {
 
           <button 
             onClick={() => setActiveTab('stats')}
-            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'stats' ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-gray-200'}`}
+            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'stats' ? 'text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <BarChart2 className="w-5 h-5" />
             <span className="text-[10px] font-bold">Stats</span>
@@ -702,22 +757,22 @@ export function App() {
 
           <button 
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'profile' ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-gray-200'}`}
+            className={`flex flex-col items-center space-y-1 transition ${activeTab === 'profile' ? 'text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <User className="w-5 h-5" />
             <span className="text-[10px] font-bold">Profile</span>
           </button>
         </nav>
 
-        {/* DETAIL MODAL (Per Episode/Issue/Chapter checklist) */}
+        {/* DETAIL MODAL (Per Episode/Issue Checklist) */}
         {selectedItem && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col justify-end animate-fadeIn">
-            <div className="bg-[#18181c] border-t border-gray-800 rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col justify-end lg:justify-center lg:items-center p-0 lg:p-6 animate-fadeIn">
+            <div className="bg-[#121826] border border-slate-800 rounded-t-3xl lg:rounded-3xl max-h-[90vh] w-full lg:max-w-2xl flex flex-col shadow-2xl overflow-hidden">
               
-              {/* Modal Banner Header */}
-              <div className="relative h-48 w-full shrink-0">
+              {/* Modal Banner */}
+              <div className="relative h-56 w-full shrink-0">
                 <img src={selectedItem.coverImage} alt={selectedItem.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#18181c] via-[#18181c]/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#121826] via-[#121826]/50 to-transparent" />
                 
                 <button 
                   onClick={() => setSelectedItem(null)}
@@ -726,19 +781,19 @@ export function App() {
                   <X className="w-4 h-4" />
                 </button>
 
-                <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between">
+                <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between">
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="px-2 py-0.5 rounded bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider">
                         {getTypeLabel(selectedItem.type)}
                       </span>
-                      <span className="text-xs text-gray-300 font-semibold">{selectedItem.releaseYear}</span>
+                      <span className="text-xs text-slate-300 font-semibold">{selectedItem.releaseYear}</span>
                     </div>
-                    <h2 className="text-xl font-black text-white">{selectedItem.title}</h2>
+                    <h2 className="text-2xl font-black text-white">{selectedItem.title}</h2>
                   </div>
                   <button 
                     onClick={() => handleDeleteItem(selectedItem.id)}
-                    className="p-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition border border-red-500/30"
+                    className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition border border-rose-500/30"
                     title="Delete item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -746,22 +801,22 @@ export function App() {
                 </div>
               </div>
 
-              {/* Modal Body / Episodes list */}
-              <div className="p-5 overflow-y-auto space-y-6 flex-1">
+              {/* Modal Body / Checklist */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Synopsis</h4>
-                  <p className="text-xs text-gray-300 leading-relaxed font-normal">{selectedItem.synopsis}</p>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Synopsis</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed font-normal">{selectedItem.synopsis}</p>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {selectedItem.genres.map(g => (
-                    <span key={g} className="px-2.5 py-1 rounded-lg bg-[#242429] border border-gray-800 text-[11px] text-gray-300 font-medium">
+                    <span key={g} className="px-3 py-1 rounded-xl bg-[#1a233c] border border-slate-800 text-xs text-slate-300 font-medium">
                       {g}
                     </span>
                   ))}
                 </div>
 
-                {/* Per Episode / Issue / Chapter Checklist */}
+                {/* Per Episode / Issue Checklist */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-white tracking-wide uppercase">
@@ -774,26 +829,26 @@ export function App() {
                       <div 
                         key={ep.number}
                         onClick={() => handleToggleEpisode(selectedItem.id, ep.number)}
-                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                        className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition ${
                           ep.watched 
-                            ? 'bg-orange-500/10 border-orange-500/30 text-white' 
-                            : 'bg-[#202024] border-gray-800 text-gray-300 hover:border-gray-700'
+                            ? 'bg-indigo-600/10 border-indigo-500/30 text-white' 
+                            : 'bg-[#161d30] border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                            ep.watched ? 'bg-orange-500 text-white shadow' : 'bg-gray-800 text-gray-400'
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
+                            ep.watched ? 'bg-indigo-600 text-white shadow' : 'bg-slate-800 text-slate-400'
                           }`}>
                             {ep.number}
                           </div>
                           <div>
                             <div className="text-xs font-bold">{ep.title}</div>
-                            {ep.watchedAt && <div className="text-[10px] text-orange-400">Logged on {ep.watchedAt}</div>}
+                            {ep.watchedAt && <div className="text-[10px] text-indigo-400">Logged on {ep.watchedAt}</div>}
                           </div>
                         </div>
 
                         <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition ${
-                          ep.watched ? 'bg-orange-500 border-orange-500 text-white' : 'border-gray-600 bg-transparent'
+                          ep.watched ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-600 bg-transparent'
                         }`}>
                           {ep.watched && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
@@ -811,34 +866,34 @@ export function App() {
         {/* ADD MEDIA MODAL */}
         {isAddModalOpen && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-[#18181c] border border-gray-800 rounded-3xl w-full max-w-sm p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#121826] border border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black text-white">Add to Shelfie</h3>
-                <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-white">
+                <h3 className="text-lg font-black text-white">Add New Title</h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleCreateItem} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-400 mb-1 block">Title Name</label>
+                  <label className="text-xs font-bold text-slate-400 mb-1 block">Title Name</label>
                   <input 
                     type="text" 
                     required
                     placeholder="e.g. Cyberpunk Edgerunners"
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
-                    className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                    className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-400 mb-1 block">Media Type</label>
+                    <label className="text-xs font-bold text-slate-400 mb-1 block">Media Type</label>
                     <select 
                       value={newType}
                       onChange={e => setNewType(e.target.value as MediaType)}
-                      className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     >
                       <option value="tv">TV Show</option>
                       <option value="movie">Movie</option>
@@ -848,62 +903,62 @@ export function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-gray-400 mb-1 block">Total Units</label>
+                    <label className="text-xs font-bold text-slate-400 mb-1 block">Total Units</label>
                     <input 
                       type="number"
                       min={1}
                       value={newTotal}
                       onChange={e => setNewTotal(Number(e.target.value))}
-                      className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-400 mb-1 block">Cover Image URL</label>
+                  <label className="text-xs font-bold text-slate-400 mb-1 block">Cover Image URL</label>
                   <input 
                     type="url"
                     value={newCover}
                     onChange={e => setNewCover(e.target.value)}
-                    className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                    className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-400 mb-1 block">Release Year</label>
+                    <label className="text-xs font-bold text-slate-400 mb-1 block">Release Year</label>
                     <input 
                       type="number"
                       value={newYear}
                       onChange={e => setNewYear(Number(e.target.value))}
-                      className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-400 mb-1 block">Genres (comma sep)</label>
+                    <label className="text-xs font-bold text-slate-400 mb-1 block">Genres (comma sep)</label>
                     <input 
                       type="text"
                       value={newGenres}
                       onChange={e => setNewGenres(e.target.value)}
-                      className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                      className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-400 mb-1 block">Synopsis</label>
+                  <label className="text-xs font-bold text-slate-400 mb-1 block">Synopsis</label>
                   <textarea 
                     rows={3}
                     value={newSynopsis}
                     onChange={e => setNewSynopsis(e.target.value)}
                     placeholder="Brief description..."
-                    className="w-full bg-[#222227] border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500 resize-none"
+                    className="w-full bg-[#161d30] border border-slate-700 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"
                   />
                 </div>
 
                 <button 
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold text-xs shadow-lg shadow-orange-500/30 hover:opacity-90 transition"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-xs shadow-lg shadow-indigo-500/30 hover:opacity-95 transition"
                 >
                   Add Title to Shelfie
                 </button>
